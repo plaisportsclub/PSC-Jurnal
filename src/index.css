@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  background: #f8fafc;
+}
+
+#root {
+  min-height: 100svh;
+}
