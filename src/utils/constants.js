@@ -10,6 +10,8 @@ export const CH_COLORS = {
   shopee: '#EE4D2D',
   tokopedia: '#42B549',
   dm: '#E1306C',
+  b2b: '#6366f1',
+  consignment: '#0ea5e9',
 }
 
 export const CH_LABELS = {
@@ -19,6 +21,8 @@ export const CH_LABELS = {
   shopee: 'Shopee',
   tokopedia: 'Tokped/TikTok',
   dm: 'DM',
+  b2b: 'B2B',
+  consignment: 'Consignment',
 }
 
 export const CAT_COLORS = {
@@ -40,7 +44,7 @@ export const CAT_COLORS = {
   '6-60100': '#78716c',
 }
 
-export const REV_PRODUCTS = ['4-40000', '4-40001', '4-40002', '4-40004', '4-40005']
+export const REV_PRODUCTS = ['4-40000', '4-40001', '4-40002', '4-40004', '4-40005', '4-40006', '4-40007']
 export const REV_ALL = [...REV_PRODUCTS, '7-70099']
 export const isRevProduct = (code) => REV_PRODUCTS.includes(code)
 export const isRevAny = (code) => REV_ALL.includes(code)
@@ -51,6 +55,8 @@ export const CH_TO_REV = {
   shopee: '4-40002',
   tokopedia: '4-40004',
   event: '4-40005',
+  b2b: '4-40006',
+  consignment: '4-40007',
 }
 
 export const SELLING = ['6-60001', '6-60002', '6-60005', '6-60007', '6-60008', '6-60009']
@@ -60,7 +66,7 @@ export const GA = [
 ]
 export const OPEX = [...SELLING, ...GA]
 
-export const CHANNELS = ['wa', 'dm', 'shopify', 'shopee', 'tokopedia', 'event']
+export const CHANNELS = ['wa', 'dm', 'shopify', 'shopee', 'tokopedia', 'event', 'b2b', 'consignment']
 
 export const TYPE_OPTS = [
   { value: 'asset', label: 'Asset' },
