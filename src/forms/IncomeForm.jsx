@@ -5,7 +5,7 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { sbPost } from '../lib/supabase'
 import { td } from '../utils/format'
-import { CHANNELS, CH_LABELS } from '../utils/constants'
+import { CHANNELS, CH_LABELS, CH_TO_REV } from '../utils/constants'
 
 export function IncomeForm({ coa, onSaved, onCancel }) {
   const [f, setF] = useState({
@@ -14,7 +14,7 @@ export function IncomeForm({ coa, onSaved, onCancel }) {
     description: '',
     amount: '',
     customer: '',
-    revenue_account_code: '4-40000',
+    revenue_account_code: CH_TO_REV['wa'] || '4-40001',
   })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
@@ -67,7 +67,7 @@ export function IncomeForm({ coa, onSaved, onCancel }) {
         <Input
           label="Channel"
           value={f.channel}
-          onChange={(v) => setF({ ...f, channel: v })}
+          onChange={(v) => setF({ ...f, channel: v, revenue_account_code: CH_TO_REV[v] || '4-40000' })}
           options={CHANNELS.map((c) => ({ value: c, label: CH_LABELS[c] }))}
         />
         <Input

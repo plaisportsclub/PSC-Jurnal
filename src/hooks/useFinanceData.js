@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { sbGet } from '../lib/supabase'
 import { normCh, td, ms, yd, d30, cp } from '../utils/format'
-import { OPEX, SELLING, GA } from '../utils/constants'
+import { OPEX, SELLING, GA, isRevProduct, isRevAny } from '../utils/constants'
 
 export function useFinanceData() {
   const [loading, setLoading] = useState(true)
@@ -31,7 +31,7 @@ export function useFinanceData() {
       setRaw({ incomes, expenses, journals, purchases, flags, inventory, coa, budgets })
 
       const m = ms(), t = td(), y = yd(), d3 = d30()
-      const revInc = incomes.filter((i) => ['4-40000', '7-70099'].includes(i.revenue_account_code))
+      const revInc = incomes.filter((i) => isRevAny(i.revenue_account_code))
 
       // Revenue
       const revMtd = revInc.filter((i) => i.date >= m).reduce((s, i) => s + Number(i.amount), 0)
@@ -119,7 +119,7 @@ export function useFinanceData() {
         const pl = i.date?.slice(0, 7)
         if (!pl) return
         if (!pnlByMonth[pl]) pnlByMonth[pl] = { rev: 0, ship: 0, cogs: 0, opex: 0, selling: 0, ga: 0 }
-        if (i.revenue_account_code === '4-40000') pnlByMonth[pl].rev += Number(i.amount)
+        if (isRevProduct(i.revenue_account_code)) pnlByMonth[pl].rev += Number(i.amount)
         if (i.revenue_account_code === '7-70099') pnlByMonth[pl].ship += Number(i.amount)
       })
       expenses.forEach((e) => {

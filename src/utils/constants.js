@@ -40,6 +40,19 @@ export const CAT_COLORS = {
   '6-60100': '#78716c',
 }
 
+export const REV_PRODUCTS = ['4-40000', '4-40001', '4-40002', '4-40004', '4-40005']
+export const REV_ALL = [...REV_PRODUCTS, '7-70099']
+export const isRevProduct = (code) => REV_PRODUCTS.includes(code)
+export const isRevAny = (code) => REV_ALL.includes(code)
+
+export const CH_TO_REV = {
+  shopify: '4-40000', web: '4-40000',
+  wa: '4-40001', terjual: '4-40001', dm: '4-40001',
+  shopee: '4-40002',
+  tokopedia: '4-40004',
+  event: '4-40005',
+}
+
 export const SELLING = ['6-60001', '6-60002', '6-60005', '6-60007', '6-60008', '6-60009']
 export const GA = [
   '6-60100', '6-60102', '6-60103', '6-60207', '6-60209', '6-60214',

@@ -4,7 +4,7 @@ import { Card, Label, Mono, Badge, Empty } from '../components/Card'
 import { Button } from '../components/Button'
 import { sbPatch } from '../lib/supabase'
 import { fR, fD, td, daysBetween, normCh } from '../utils/format'
-import { CH_COLORS, CH_LABELS } from '../utils/constants'
+import { CH_COLORS, CH_LABELS, isRevProduct } from '../utils/constants'
 
 export function Settlements({ raw, fetchAll }) {
   const [selected, setSelected] = useState([])
@@ -35,7 +35,7 @@ export function Settlements({ raw, fetchAll }) {
 
   const mktRevenue = useMemo(() => {
     const m = {}
-    raw.incomes.filter((i) => ['shopee', 'tokopedia'].includes(i.channel) && i.revenue_account_code === '4-40000').forEach((i) => {
+    raw.incomes.filter((i) => ['shopee', 'tokopedia'].includes(i.channel) && isRevProduct(i.revenue_account_code)).forEach((i) => {
       const p = i.channel; const mo = i.date?.slice(0, 7)
       const k = `${p}-${mo}`
       if (!m[k]) m[k] = { platform: p, month: mo, revenue: 0, orders: 0, settled: 0, pending: 0 }

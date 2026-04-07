@@ -7,7 +7,7 @@ import { DateFilter } from '../components/Input'
 import { DataTable } from '../components/DataTable'
 import { IncomeForm } from '../forms/IncomeForm'
 import { fR, fS, fD, td, normCh } from '../utils/format'
-import { CH_COLORS, CH_LABELS } from '../utils/constants'
+import { CH_COLORS, CH_LABELS, isRevProduct, isRevAny } from '../utils/constants'
 import { exportCSV } from '../utils/csv'
 
 const TTS = { fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }
@@ -21,7 +21,7 @@ export function Sales({ raw, onSaved }) {
 
   const byChannel = useMemo(() => {
     const m = {}
-    filtered.filter((i) => i.revenue_account_code === '4-40000').forEach((i) => {
+    filtered.filter((i) => isRevProduct(i.revenue_account_code)).forEach((i) => {
       const ch = normCh(i.channel)
       if (!m[ch]) m[ch] = { channel: ch, total: 0, count: 0, amounts: [] }
       m[ch].total += Number(i.amount); m[ch].count++; m[ch].amounts.push(Number(i.amount))
@@ -31,7 +31,7 @@ export function Sales({ raw, onSaved }) {
 
   const monthlyByChannel = useMemo(() => {
     const m = {}
-    filtered.filter((i) => ['4-40000', '7-70099'].includes(i.revenue_account_code)).forEach((i) => {
+    filtered.filter((i) => isRevAny(i.revenue_account_code)).forEach((i) => {
       const mo = i.date?.slice(0, 7); const ch = normCh(i.channel)
       if (!mo) return
       if (!m[mo]) m[mo] = { month: mo }
@@ -43,7 +43,7 @@ export function Sales({ raw, onSaved }) {
 
   const topCustomers = useMemo(() => {
     const m = {}
-    filtered.filter((i) => i.revenue_account_code === '4-40000' && i.customer).forEach((i) => {
+    filtered.filter((i) => isRevProduct(i.revenue_account_code) && i.customer).forEach((i) => {
       const c = i.customer
       if (!m[c]) m[c] = { name: c, total: 0, count: 0 }
       m[c].total += Number(i.amount); m[c].count++
@@ -52,19 +52,19 @@ export function Sales({ raw, onSaved }) {
   }, [filtered])
 
   const activeChannels = useMemo(
-    () => [...new Set(filtered.filter((i) => ['4-40000', '7-70099'].includes(i.revenue_account_code)).map((i) => normCh(i.channel)))],
+    () => [...new Set(filtered.filter((i) => isRevAny(i.revenue_account_code)).map((i) => normCh(i.channel)))],
     [filtered]
   )
 
   const handleSaved = () => { setShowForm(false); onSaved() }
-  const revFiltered = filtered.filter((i) => ['4-40000', '7-70099'].includes(i.revenue_account_code))
+  const revFiltered = filtered.filter((i) => isRevAny(i.revenue_account_code))
 
   return (
     <>
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
         <DateFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />
         <div className="flex gap-1.5">
-          <Button onClick={() => exportCSV(filtered.map((i) => ({ date: i.date, channel: normCh(i.channel), description: i.description, amount: i.amount, customer: i.customer, type: i.revenue_account_code === '4-40000' ? 'product' : 'shipping', pending: i.pending_settlement })), 'psc-sales.csv')} variant="secondary" small><Download size={13} />CSV</Button>
+          <Button onClick={() => exportCSV(filtered.map((i) => ({ date: i.date, channel: normCh(i.channel), description: i.description, amount: i.amount, customer: i.customer, type: isRevProduct(i.revenue_account_code) ? 'product' : 'shipping', pending: i.pending_settlement })), 'psc-sales.csv')} variant="secondary" small><Download size={13} />CSV</Button>
           <Button onClick={() => setShowForm(!showForm)} variant={showForm ? 'secondary' : 'primary'} small><Plus size={14} />Input</Button>
         </div>
       </div>
@@ -73,9 +73,9 @@ export function Sales({ raw, onSaved }) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3.5">
         <Card><Label>Revenue</Label><Mono size="text-lg" color="text-green-600" className="mt-1">{fR(revFiltered.reduce((s, i) => s + Number(i.amount), 0))}</Mono></Card>
-        <Card><Label>Products</Label><Mono size="text-lg" className="mt-1">{fR(filtered.filter((i) => i.revenue_account_code === '4-40000').reduce((s, i) => s + Number(i.amount), 0))}</Mono></Card>
+        <Card><Label>Products</Label><Mono size="text-lg" className="mt-1">{fR(filtered.filter((i) => isRevProduct(i.revenue_account_code)).reduce((s, i) => s + Number(i.amount), 0))}</Mono></Card>
         <Card><Label>Shipping</Label><Mono size="text-lg" className="mt-1">{fR(filtered.filter((i) => i.revenue_account_code === '7-70099').reduce((s, i) => s + Number(i.amount), 0))}</Mono></Card>
-        <Card><Label>Orders</Label><Mono size="text-lg" className="mt-1">{filtered.filter((i) => i.revenue_account_code === '4-40000').length}</Mono></Card>
+        <Card><Label>Orders</Label><Mono size="text-lg" className="mt-1">{filtered.filter((i) => isRevProduct(i.revenue_account_code)).length}</Mono></Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
@@ -162,7 +162,7 @@ export function Sales({ raw, onSaved }) {
               { key: 'description', label: 'Desc', maxW: 260 },
               { key: 'amount', label: 'Amount', align: 'right', mono: true, render: (v) => fR(v) },
               { key: 'customer', label: 'Customer' },
-              { key: 'revenue_account_code', label: 'Type', render: (v) => v === '4-40000' ? 'Product' : 'Ship', nowrap: true },
+              { key: 'revenue_account_code', label: 'Type', render: (v) => isRevProduct(v) ? 'Product' : 'Ship', nowrap: true },
               { key: 'pending_settlement', label: 'Status', render: (v) => v ? <Badge text="Pending" color="#d97706" /> : null, align: 'center' },
             ]}
             data={filtered}
