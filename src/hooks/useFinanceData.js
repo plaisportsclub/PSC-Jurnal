@@ -10,13 +10,14 @@ export function useFinanceData() {
   const [raw, setRaw] = useState({
     incomes: [], expenses: [], journals: [], purchases: [],
     flags: [], inventory: [], coa: [], budgets: [],
+    purchasePayments: [], vendorReceipts: [], rawMaterials: [],
   })
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     setErr(null)
     try {
-      const [incomes, expenses, journals, purchases, flags, inventory, coa, budgets] =
+      const [incomes, expenses, journals, purchases, flags, inventory, coa, budgets, purchasePayments, vendorReceipts, rawMaterials] =
         await Promise.all([
           sbGet('incomes', 'select=*&order=date.desc'),
           sbGet('expenses', 'select=*&order=date.desc'),
@@ -26,9 +27,12 @@ export function useFinanceData() {
           sbGet('inventory', 'select=*&discontinued=eq.false&stok=gt.0'),
           sbGet('chart_of_accounts', 'select=*&order=account_code'),
           sbGet('budgets', 'select=*&order=period_label'),
+          sbGet('purchase_payments', 'select=*&order=date.desc'),
+          sbGet('vendor_receipts', 'select=*&order=date.desc'),
+          sbGet('raw_materials', 'select=*&order=nama'),
         ])
 
-      setRaw({ incomes, expenses, journals, purchases, flags, inventory, coa, budgets })
+      setRaw({ incomes, expenses, journals, purchases, flags, inventory, coa, budgets, purchasePayments, vendorReceipts, rawMaterials })
 
       const m = ms(), t = td(), y = yd(), d3 = d30()
       const revInc = incomes.filter((i) => isRevAny(i.revenue_account_code))
