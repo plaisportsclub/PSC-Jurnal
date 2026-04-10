@@ -17,7 +17,7 @@ function Row({ l, v, b, sub }) {
 
 export function BalanceSheet({ raw }) {
   const bs = useMemo(() => {
-    const { journals, incomes, expenses, inventory } = raw
+    const { journals, incomes, expenses, inventory, rawMaterials } = raw
 
     // --- Opening balances from journal_entries (OPENING type) ---
     // debit_account entries = positive (assets, debit-normal)
@@ -54,8 +54,8 @@ export function BalanceSheet({ raw }) {
     // Inventory Barang Jadi = live dari tabel inventory (stok x HPP)
     const invFG = inventory.reduce((s, i) => s + Number(i.stok) * Number(i.hpp), 0)
 
-    // Inventory Bahan Baku = opening (belum ada movement tracking detail)
-    const invRM = ob['1-10201'] || 0
+    // Inventory Bahan Baku = live dari tabel raw_materials (stok_qty x hpp_per_unit)
+    const invRM = (rawMaterials || []).reduce((s, r) => s + Number(r.stok_qty || 0) * Number(r.hpp_per_unit || 0), 0)
 
     // Uang Muka
     const uangMuka = ob['1-10402'] || 0
