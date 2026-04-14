@@ -193,6 +193,10 @@ export function Dashboard({ D, raw }) {
             <Label>Inventory</Label>
           </div>
           <Mono size="text-lg" className="mt-1.5">{fR(D.invValue)}</Mono>
+          <div className="flex flex-col gap-0.5 mt-1.5 text-[10px] text-slate-400">
+            <div className="flex justify-between"><span>Barang Jadi</span><span className="font-mono">{fS(D.invFG || 0)}</span></div>
+            <div className="flex justify-between"><span>Bahan Baku</span><span className="font-mono">{fS(D.invRM || 0)}</span></div>
+          </div>
         </Card>
       </div>
     </>

@@ -89,7 +89,9 @@ export function useFinanceData() {
       const pendingSettlement = incomes
         .filter((i) => i.pending_settlement)
         .reduce((s, i) => s + Number(i.amount), 0)
-      const invValue = inventory.reduce((s, i) => s + Number(i.stok) * Number(i.hpp), 0)
+      const invFG = inventory.reduce((s, i) => s + Number(i.stok) * Number(i.hpp), 0)
+      const invRM = (rawMaterials || []).reduce((s, r) => s + Number(r.stok_qty || 0) * Number(r.hpp_per_unit || 0), 0)
+      const invValue = invFG + invRM
 
       // Cashflow trend
       const cfMap = {}
@@ -156,7 +158,7 @@ export function useFinanceData() {
         expMtd, expToday, expYesterday,
         cogsMtd, opexMtd,
         channels, directTotal, mktTotal,
-        trend, pendingSettlement, invValue,
+        trend, pendingSettlement, invValue, invFG, invRM,
         cfTrend, cashBalance, ar: pendingSettlement, fixedAssets,
         pnlByMonth, flagCount: flags.length, budgetTarget,
       })
