@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { sbGet } from '../lib/supabase'
 import { normCh, td, ms, yd, d30, cp } from '../utils/format'
-import { OPEX, SELLING, GA, isRevProduct, isRevAny } from '../utils/constants'
+import { OPEX, SELLING, GA, COGS_ACCOUNTS, isRevProduct, isRevAny } from '../utils/constants'
 
 export function useFinanceData() {
   const [loading, setLoading] = useState(true)
@@ -51,7 +51,7 @@ export function useFinanceData() {
       const cogsMtd =
         journals.filter((j) => j.date >= m && ['COGS', 'PRODUCTION'].includes(j.journal_type))
           .reduce((s, j) => s + Number(j.amount), 0) +
-        expenses.filter((e) => e.date >= m && ['5-50001', '5-50300'].includes(e.account_code))
+        expenses.filter((e) => e.date >= m && COGS_ACCOUNTS.includes(e.account_code))
           .reduce((s, e) => s + Number(e.amount), 0)
 
       // OPEX MTD
@@ -130,7 +130,7 @@ export function useFinanceData() {
         const pl = e.date?.slice(0, 7)
         if (!pl) return
         if (!pnlByMonth[pl]) pnlByMonth[pl] = { rev: 0, ship: 0, cogs: 0, opex: 0, selling: 0, ga: 0 }
-        if (['5-50001', '5-50300'].includes(e.account_code)) pnlByMonth[pl].cogs += Number(e.amount)
+        if (COGS_ACCOUNTS.includes(e.account_code)) pnlByMonth[pl].cogs += Number(e.amount)
         if (SELLING.includes(e.account_code)) {
           pnlByMonth[pl].selling += Number(e.amount)
           pnlByMonth[pl].opex += Number(e.amount)

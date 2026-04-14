@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Card, Label, Badge } from '../components/Card'
 import { fR } from '../utils/format'
+import { COGS_ACCOUNTS } from '../utils/constants'
 
 function Section({ title }) {
   return <div className="text-xs font-bold py-2 border-b-2 border-slate-900 uppercase">{title}</div>
@@ -83,12 +84,16 @@ export function BalanceSheet({ raw }) {
     // After OPENING + China trip credits, ob['3-31001'] is net positive (debit balance)
     const selisih = ob['3-31001'] || 0
 
-    // Laba berjalan = all income - all expense - COGS/production journals
+    // Laba berjalan = all income - all expense - COGS (from journals + expenses with COGS accounts)
     const totalIncome = incomes.reduce((s, i) => s + Number(i.amount), 0)
     const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
-    const cogs = journals
+    const cogsFromJournals = journals
       .filter((j) => ['COGS', 'PRODUCTION'].includes(j.journal_type))
       .reduce((s, j) => s + Number(j.amount), 0)
+    const cogsFromExpenses = expenses
+      .filter((e) => COGS_ACCOUNTS.includes(e.account_code))
+      .reduce((s, e) => s + Number(e.amount), 0)
+    const cogs = cogsFromJournals + cogsFromExpenses
     const labaBerjalan = totalIncome - totalExpense - cogs
 
     const totalEquity = modalAwal - selisih + labaBerjalan
