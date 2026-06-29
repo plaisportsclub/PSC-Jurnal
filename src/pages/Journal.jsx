@@ -33,11 +33,11 @@ const TYPE_COLORS = {
 }
 
 const TYPE_GROUPS = [
-  { label: 'Inventory & Production', types: ['PRODUCTION', 'COGS', 'RESTOCK'] },
+  { label: 'Inventory & Production', types: ['production', 'cogs', 'restock', 'PRODUCTION', 'COGS', 'RESTOCK'] },
   { label: 'Purchases', types: ['PURCHASE', 'PURCHASE_DP', 'PURCHASE_PELUNASAN', 'PURCHASE_RM', 'purchase', 'purchase_dp', 'purchase_pelunasan'] },
   { label: 'Revenue & Income', types: ['income', 'revenue', 'sale', 'shipping', 'shipping_income', 'settlement_income'] },
   { label: 'Expenses', types: ['EXPENSE', 'expense', 'discount', 'settlement_fee', 'refund'] },
-  { label: 'Opening', types: ['OPENING'] },
+  { label: 'Adjustment & Opening', types: ['adjustment', 'OPENING'] },
 ]
 
 function getTypeColor(t) {

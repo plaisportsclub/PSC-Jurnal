@@ -20,20 +20,23 @@ export function BalanceSheet({ raw }) {
   const bs = useMemo(() => {
     const { journals, incomes, expenses, inventory, rawMaterials } = raw
 
-    // --- Opening balances from journal_entries (OPENING type) ---
+    // --- Opening balances from journal_entries ---
+    // NOTE: journal_type dimigrasi ke lowercase; opening balance sekarang
+    // journal_type='adjustment' dengan reference 'OB-*' (dulu type 'OPENING').
     // debit_account entries = positive (assets, debit-normal)
     // credit_account entries = negative (liabilities, equity, contra-assets)
     const ob = {}
     journals
-      .filter((j) => j.journal_type === 'OPENING')
+      .filter((j) => j.journal_type === 'adjustment' && (j.reference || '').toUpperCase().startsWith('OB-'))
       .forEach((j) => {
         if (j.debit_account) ob[j.debit_account] = (ob[j.debit_account] || 0) + Number(j.amount)
         if (j.credit_account) ob[j.credit_account] = (ob[j.credit_account] || 0) - Number(j.amount)
       })
 
-    // China trip EXPENSE journals: debit expense accts, credit 3-31001
+    // China trip journals: debit expense accts, credit 3-31001
+    // (dulu journal_type='EXPENSE'; sekarang 'expense' + reference 'CHINA-*')
     journals
-      .filter((j) => j.journal_type === 'EXPENSE')
+      .filter((j) => j.journal_type === 'expense' && (j.reference || '').toUpperCase().startsWith('CHINA-'))
       .forEach((j) => {
         if (j.credit_account) ob[j.credit_account] = (ob[j.credit_account] || 0) - Number(j.amount)
       })
@@ -88,7 +91,7 @@ export function BalanceSheet({ raw }) {
     const totalIncome = incomes.reduce((s, i) => s + Number(i.amount), 0)
     const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
     const cogsFromJournals = journals
-      .filter((j) => ['COGS', 'PRODUCTION'].includes(j.journal_type))
+      .filter((j) => ['cogs', 'production'].includes(j.journal_type) && j.debit_account)
       .reduce((s, j) => s + Number(j.amount), 0)
     const cogsFromExpenses = expenses
       .filter((e) => COGS_ACCOUNTS.includes(e.account_code))
