@@ -49,7 +49,7 @@ export function useFinanceData() {
 
       // COGS MTD
       const cogsMtd =
-        journals.filter((j) => j.date >= m && ['COGS', 'PRODUCTION'].includes(j.journal_type))
+        journals.filter((j) => j.date >= m && ['cogs', 'production'].includes(j.journal_type) && j.debit_account)
           .reduce((s, j) => s + Number(j.amount), 0) +
         expenses.filter((e) => e.date >= m && COGS_ACCOUNTS.includes(e.account_code))
           .reduce((s, e) => s + Number(e.amount), 0)
@@ -146,7 +146,7 @@ export function useFinanceData() {
         const pl = j.date?.slice(0, 7)
         if (!pl) return
         if (!pnlByMonth[pl]) pnlByMonth[pl] = { rev: 0, ship: 0, cogs: 0, opex: 0, selling: 0, ga: 0 }
-        if (['COGS', 'PRODUCTION'].includes(j.journal_type)) pnlByMonth[pl].cogs += Number(j.amount)
+        if (['cogs', 'production'].includes(j.journal_type) && j.debit_account) pnlByMonth[pl].cogs += Number(j.amount)
       })
 
       const budgetTarget = budgets.find(
