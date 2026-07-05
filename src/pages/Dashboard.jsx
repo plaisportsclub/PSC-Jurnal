@@ -93,8 +93,8 @@ export function Dashboard({ D, raw }) {
           <Mono size="text-lg" color={netProfit >= 0 ? 'text-green-600' : 'text-red-600'}>{fR(netProfit)}</Mono>
         </Card>
         <Card>
-          <div className="flex items-center gap-1.5 mb-1"><Wallet size={13} className="text-slate-500" /><Label>Cash (est.)</Label></div>
-          <Mono size="text-lg">{fR(D.cashBalance || 0)}</Mono>
+          <div className="flex items-center gap-1.5 mb-1"><Wallet size={13} className="text-slate-500" /><Label>Kas & Bank (ledger)</Label></div>
+          <Mono size="text-lg">{fR((D.balanceSheet || []).filter((r) => ['1-10001', '1-10002-2', '1-10003'].includes(r.account_code)).reduce((s, r) => s + Number(r.saldo), 0))}</Mono>
         </Card>
       </div>
 

@@ -17,19 +17,24 @@ export function useFinanceData() {
     setLoading(true)
     setErr(null)
     try {
-      const [incomes, expenses, journals, purchases, flags, inventory, coa, budgets, purchasePayments, vendorReceipts, rawMaterials] =
+      // fallback [] per-tabel: tabel yang dihapus/error jangan matiin seluruh app
+      const safe = (p) => p.catch(() => [])
+      const [incomes, expenses, journals, purchases, flags, inventory, coa, budgets, purchasePayments, vendorReceipts, rawMaterials, incomeStatement, balanceSheet, cashFlow] =
         await Promise.all([
           sbGet('incomes', 'select=*&order=date.desc'),
           sbGet('expenses', 'select=*&order=date.desc'),
           sbGet('journal_entries', 'select=*&order=date.desc'),
-          sbGet('purchases', 'select=*&order=date.desc'),
-          sbGet('agent_flags', 'select=*&resolved_at=is.null'),
-          sbGet('inventory', 'select=*&discontinued=eq.false&stok=gt.0'),
+          safe(sbGet('purchases', 'select=*&order=date.desc')),
+          safe(sbGet('agent_flags', 'select=*&resolved_at=is.null')),
+          safe(sbGet('inventory', 'select=*&discontinued=eq.false&stok=gt.0')),
           sbGet('chart_of_accounts', 'select=*&order=account_code'),
-          sbGet('budgets', 'select=*&order=period_label'),
-          sbGet('purchase_payments', 'select=*&order=date.desc'),
-          sbGet('vendor_receipts', 'select=*&order=date.desc'),
-          sbGet('raw_materials', 'select=*&order=nama'),
+          safe(sbGet('budgets', 'select=*&order=period_label')),
+          safe(sbGet('purchase_payments', 'select=*&order=date.desc')),
+          safe(sbGet('vendor_receipts', 'select=*&order=date.desc')),
+          safe(sbGet('raw_materials', 'select=*&order=nama')),
+          sbGet('v_income_statement', 'select=*&order=period_label'),
+          sbGet('v_balance_sheet', 'select=*&order=account_code'),
+          sbGet('v_cash_flow', 'select=*&order=period_label'),
         ])
 
       setRaw({ incomes, expenses, journals, purchases, flags, inventory, coa, budgets, purchasePayments, vendorReceipts, rawMaterials })
@@ -47,9 +52,9 @@ export function useFinanceData() {
       const expToday = expenses.filter((e) => e.date === t).reduce((s, e) => s + Number(e.amount), 0)
       const expYesterday = expenses.filter((e) => e.date === y).reduce((s, e) => s + Number(e.amount), 0)
 
-      // COGS MTD
+      // COGS MTD — cash-basis: expenses akun 5-x + journal cogs/production non-expense-sourced
       const cogsMtd =
-        journals.filter((j) => j.date >= m && ['cogs', 'production'].includes(j.journal_type) && j.debit_account)
+        journals.filter((j) => j.date >= m && ['cogs', 'production'].includes((j.journal_type || '').toLowerCase()) && j.debit_account)
           .reduce((s, j) => s + Number(j.amount), 0) +
         expenses.filter((e) => e.date >= m && COGS_ACCOUNTS.includes(e.account_code))
           .reduce((s, e) => s + Number(e.amount), 0)
@@ -146,7 +151,7 @@ export function useFinanceData() {
         const pl = j.date?.slice(0, 7)
         if (!pl) return
         if (!pnlByMonth[pl]) pnlByMonth[pl] = { rev: 0, ship: 0, cogs: 0, opex: 0, selling: 0, ga: 0 }
-        if (['cogs', 'production'].includes(j.journal_type) && j.debit_account) pnlByMonth[pl].cogs += Number(j.amount)
+        if (['cogs', 'production'].includes((j.journal_type || '').toLowerCase()) && j.debit_account) pnlByMonth[pl].cogs += Number(j.amount)
       })
 
       const budgetTarget = budgets.find(
@@ -161,6 +166,7 @@ export function useFinanceData() {
         trend, pendingSettlement, invValue, invFG, invRM,
         cfTrend, cashBalance, ar: pendingSettlement, fixedAssets,
         pnlByMonth, flagCount: flags.length, budgetTarget,
+        incomeStatement, balanceSheet, cashFlow,
       })
     } catch (e) {
       setErr(e.message)

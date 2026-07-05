@@ -5,6 +5,7 @@ import { Button } from '../components/Button'
 import { fR } from '../utils/format'
 import { exportCSV } from '../utils/csv'
 
+// P&L dari v_income_statement (journal-based, cash-basis) — bukan derivasi client-side
 export function ProfitLoss({ D }) {
   const [pnlFrom, setPnlFrom] = useState('2026-01')
   const [pnlTo, setPnlTo] = useState(() => {
@@ -12,44 +13,61 @@ export function ProfitLoss({ D }) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
 
-  const months = Object.keys(D.pnlByMonth || {})
-    .filter((m) => m >= pnlFrom && m <= pnlTo)
-    .sort()
-    .reverse()
+  const all = D.incomeStatement || []
+  const periods = all
+    .filter((r) => r.period_label >= pnlFrom && r.period_label <= pnlTo)
+    .sort((a, b) => b.period_label.localeCompare(a.period_label))
+
+  const num = (r, k) => Number(r?.[k] || 0)
+  const total = (k) => periods.reduce((s, r) => s + num(r, k), 0)
 
   const handleExport = () => {
     exportCSV(
-      months.map((m) => {
-        const d = D.pnlByMonth[m] || { rev: 0, ship: 0, cogs: 0, opex: 0 }
-        return {
-          period: m,
-          revenue: d.rev,
-          shipping: d.ship,
-          total_rev: d.rev + d.ship,
-          cogs: d.cogs,
-          gross: d.rev + d.ship - d.cogs,
-          opex: d.opex,
-          net: d.rev + d.ship - d.cogs - d.opex,
-        }
-      }),
+      [...periods].reverse().map((r) => ({
+        period: r.period_label,
+        revenue: num(r, 'revenue_products'),
+        shipping_other: num(r, 'shipping_income'),
+        discount_returns: -num(r, 'discount_returns'),
+        total_revenue: num(r, 'total_revenue'),
+        cogs: num(r, 'cogs'),
+        gross_profit: num(r, 'gross_profit'),
+        opex_marketing: num(r, 'opex_marketing'),
+        opex_wages: num(r, 'opex_wages'),
+        opex_other: num(r, 'opex_other'),
+        total_opex: num(r, 'total_opex'),
+        net_profit: num(r, 'net_profit'),
+      })),
       'psc-pnl.csv'
     )
   }
 
   const rows = [
-    { l: 'Revenue Products', k: 'rev' },
-    { l: 'Shipping', k: 'ship' },
-    { l: 'Total Revenue', calc: (m) => m.rev + m.ship, b: true, ln: true },
+    { l: 'Revenue Products', k: 'revenue_products' },
+    { l: 'Other Income (Shipping/Bunga)', k: 'shipping_income' },
+    { l: 'Discount & Returns', k: 'discount_returns', neg: true },
+    { l: 'Total Revenue', k: 'total_revenue', b: true, ln: true },
     { sp: true },
     { l: 'COGS', k: 'cogs' },
-    { l: 'Gross Profit', calc: (m) => m.rev + m.ship - m.cogs, b: true, ln: true },
+    { l: 'Gross Profit', k: 'gross_profit', b: true, ln: true },
+    { l: 'Gross Margin %', pct: true },
     { sp: true },
-    { l: 'Selling', k: 'selling' },
-    { l: 'G&A', k: 'ga' },
-    { l: 'Total Opex', k: 'opex', b: true, ln: true },
+    { l: 'Marketing (ads/KOL/event/R&D)', k: 'opex_marketing' },
+    { l: 'Wages', k: 'opex_wages' },
+    { l: 'Other Opex', k: 'opex_other' },
+    { l: 'Total Opex', k: 'total_opex', b: true, ln: true },
     { sp: true },
-    { l: 'NET PROFIT', calc: (m) => m.rev + m.ship - m.cogs - m.opex, b: true, ln: true, big: true },
+    { l: 'NET PROFIT', k: 'net_profit', b: true, ln: true, big: true },
   ]
+
+  const cellVal = (r, row) => {
+    if (row.pct) {
+      const tr = num(r, 'total_revenue')
+      return tr ? `${((num(r, 'gross_profit') / tr) * 100).toFixed(1)}%` : '-'
+    }
+    const v = num(r, row.k)
+    return fR(row.neg ? -v : v)
+  }
+  const cellNum = (r, row) => (row.neg ? -num(r, row.k) : num(r, row.k))
 
   return (
     <>
@@ -65,36 +83,46 @@ export function ProfitLoss({ D }) {
         </Button>
       </div>
 
-      {!months.length ? (
+      {!periods.length ? (
         <Empty msg="Tidak ada data untuk periode ini" />
       ) : (
         <Card>
-          <Label>P&L</Label>
+          <div className="flex justify-between items-center">
+            <Label>P&L (cash-basis, dari buku besar)</Label>
+            <span className="text-[10px] text-slate-400">sumber: v_income_statement</span>
+          </div>
           <div className="overflow-x-auto mt-3.5">
             <table className="w-full border-collapse text-[13px]">
               <thead>
                 <tr className="bg-slate-50">
                   <th className="px-3 py-2.5 text-left font-semibold text-[11px] uppercase border-b-2 border-slate-200">Account</th>
-                  {months.map((m) => (
-                    <th key={m} className="px-3 py-2.5 text-right font-semibold text-[11px] border-b-2 border-slate-200 font-mono">{m}</th>
+                  {periods.map((r) => (
+                    <th key={r.period_label} className="px-3 py-2.5 text-right font-semibold text-[11px] border-b-2 border-slate-200 font-mono">{r.period_label}</th>
                   ))}
+                  {periods.length > 1 && (
+                    <th className="px-3 py-2.5 text-right font-semibold text-[11px] border-b-2 border-slate-200 font-mono bg-slate-100">Total</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => {
-                  if (r.sp) return <tr key={i}><td colSpan={months.length + 1} className="h-1.5" /></tr>
+                {rows.map((row, i) => {
+                  if (row.sp) return <tr key={i}><td colSpan={periods.length + 2} className="h-1.5" /></tr>
+                  const totalV = row.pct
+                    ? (total('total_revenue') ? `${((total('gross_profit') / total('total_revenue')) * 100).toFixed(1)}%` : '-')
+                    : fR(row.neg ? -total(row.k) : total(row.k))
                   return (
-                    <tr key={i} className={r.ln ? 'border-t border-slate-300' : ''}>
-                      <td className={`px-3 py-1.5 ${r.b ? 'font-bold' : ''} ${r.big ? 'text-sm' : 'text-[13px]'}`}>{r.l}</td>
-                      {months.map((m) => {
-                        const d = D.pnlByMonth[m] || { rev: 0, ship: 0, cogs: 0, opex: 0, selling: 0, ga: 0 }
-                        const v = r.calc ? r.calc(d) : d[r.k] || 0
-                        return (
-                          <td key={m} className={`px-3 py-1.5 text-right font-mono ${r.b ? 'font-bold' : ''} ${r.big ? 'text-sm' : 'text-[13px]'} ${v < 0 ? 'text-red-600' : 'text-slate-900'}`}>
-                            {fR(v)}
-                          </td>
-                        )
-                      })}
+                    <tr key={i} className={row.ln ? 'border-t border-slate-300' : ''}>
+                      <td className={`px-3 py-1.5 ${row.b ? 'font-bold' : ''} ${row.big ? 'text-sm' : 'text-[13px]'} ${row.pct ? 'text-slate-400 italic' : ''}`}>{row.l}</td>
+                      {periods.map((r) => (
+                        <td key={r.period_label} className={`px-3 py-1.5 text-right font-mono ${row.b ? 'font-bold' : ''} ${row.big ? 'text-sm' : 'text-[13px]'} ${row.pct ? 'text-slate-400' : cellNum(r, row) < 0 ? 'text-red-600' : 'text-slate-900'}`}>
+                          {cellVal(r, row)}
+                        </td>
+                      ))}
+                      {periods.length > 1 && (
+                        <td className={`px-3 py-1.5 text-right font-mono bg-slate-50 ${row.b ? 'font-bold' : ''} ${row.big ? 'text-sm' : 'text-[13px]'} ${row.pct ? 'text-slate-400' : ''}`}>
+                          {totalV}
+                        </td>
+                      )}
                     </tr>
                   )
                 })}

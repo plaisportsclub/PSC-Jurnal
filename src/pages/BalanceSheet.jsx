@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { Card, Label, Badge } from '../components/Card'
 import { fR } from '../utils/format'
-import { COGS_ACCOUNTS } from '../utils/constants'
 
+// Neraca dari v_balance_sheet (saldo ledger per akun, sign udah dinormalisasi di view)
 function Section({ title }) {
   return <div className="text-xs font-bold py-2 border-b-2 border-slate-900 uppercase">{title}</div>
 }
@@ -16,101 +16,35 @@ function Row({ l, v, b, sub }) {
   )
 }
 
-export function BalanceSheet({ raw }) {
+export function BalanceSheet({ D, raw }) {
   const bs = useMemo(() => {
-    const { journals, incomes, expenses, inventory, rawMaterials } = raw
+    const rows = D.balanceSheet || []
+    const sal = (r) => Number(r.saldo || 0)
+    const byType = (t) => rows.filter((r) => r.account_type === t)
 
-    // --- Opening balances from journal_entries ---
-    // NOTE: journal_type dimigrasi ke lowercase; opening balance sekarang
-    // journal_type='adjustment' dengan reference 'OB-*' (dulu type 'OPENING').
-    // debit_account entries = positive (assets, debit-normal)
-    // credit_account entries = negative (liabilities, equity, contra-assets)
-    const ob = {}
-    journals
-      .filter((j) => j.journal_type === 'adjustment' && (j.reference || '').toUpperCase().startsWith('OB-'))
-      .forEach((j) => {
-        if (j.debit_account) ob[j.debit_account] = (ob[j.debit_account] || 0) + Number(j.amount)
-        if (j.credit_account) ob[j.credit_account] = (ob[j.credit_account] || 0) - Number(j.amount)
-      })
+    const assets = byType('asset')
+    const liabilities = byType('liability')
+    const equity = byType('equity')
 
-    // China trip journals: debit expense accts, credit 3-31001
-    // (dulu journal_type='EXPENSE'; sekarang 'expense' + reference 'CHINA-*')
-    journals
-      .filter((j) => j.journal_type === 'expense' && (j.reference || '').toUpperCase().startsWith('CHINA-'))
-      .forEach((j) => {
-        if (j.credit_account) ob[j.credit_account] = (ob[j.credit_account] || 0) - Number(j.amount)
-      })
+    const totalAssets = assets.reduce((s, r) => s + sal(r), 0)
+    const totalLiabilities = liabilities.reduce((s, r) => s + sal(r), 0)
+    const totalEquity3 = equity.reduce((s, r) => s + sal(r), 0)
 
-    // --- ASSETS ---
-    // Cash = Opening BCA + income received - expenses paid - purchase payments
-    const cashOpening = ob['1-10002-2'] || 0
-    const incomeReceived = incomes
-      .filter((i) => !i.pending_settlement)
-      .reduce((s, i) => s + Number(i.amount), 0)
-    const expensesPaid = expenses.reduce((s, e) => s + Number(e.amount), 0)
-    const cash = cashOpening + incomeReceived - expensesPaid
+    // Laba berjalan = income (credit-positive di view) - cogs - expense (debit-positive)
+    const labaBerjalan =
+      byType('income').reduce((s, r) => s + sal(r), 0) -
+      byType('cogs').reduce((s, r) => s + sal(r), 0) -
+      byType('expense').reduce((s, r) => s + sal(r), 0)
 
-    // AR = pending settlement incomes (marketplace belum cair)
-    const ar = incomes
-      .filter((i) => i.pending_settlement)
-      .reduce((s, i) => s + Number(i.amount), 0)
-
-    // Inventory Barang Jadi = live dari tabel inventory (stok x HPP)
-    const invFG = inventory.reduce((s, i) => s + Number(i.stok) * Number(i.hpp), 0)
-
-    // Inventory Bahan Baku = live dari tabel raw_materials (stok_qty x hpp_per_unit)
-    const invRM = (rawMaterials || []).reduce((s, r) => s + Number(r.stok_qty || 0) * Number(r.hpp_per_unit || 0), 0)
-
-    // Uang Muka
-    const uangMuka = ob['1-10402'] || 0
-
-    // Fixed Assets
-    const mesin = ob['1-10704'] || 0
-    const peralatan = ob['1-10705'] || 0
-    const deprMesin = ob['1-10754'] || 0   // negative
-    const deprKantor = ob['1-10755'] || 0  // negative
-    const faGross = mesin + peralatan
-    const faDepr = deprMesin + deprKantor
-    const faNet = faGross + faDepr
-
-    const totalAssets = cash + ar + invFG + invRM + uangMuka + faNet
-
-    // --- LIABILITIES ---
-    const hutangBella = Math.abs(ob['2-20600-1'] || 0)
-    const hutangGaby = Math.abs(ob['2-20600-2'] || 0)
-    const totalLiabilities = hutangBella + hutangGaby
-
-    // --- EQUITY ---
-    const modalAwal = Math.abs(ob['3-30999'] || 0)
-
-    // Selisih Pembukuan = debit balance in equity (reduces equity)
-    // After OPENING + China trip credits, ob['3-31001'] is net positive (debit balance)
-    const selisih = ob['3-31001'] || 0
-
-    // Laba berjalan = all income - all expense - COGS (from journals + expenses with COGS accounts)
-    const totalIncome = incomes.reduce((s, i) => s + Number(i.amount), 0)
-    const totalExpense = expenses.reduce((s, e) => s + Number(e.amount), 0)
-    const cogsFromJournals = journals
-      .filter((j) => ['cogs', 'production'].includes(j.journal_type) && j.debit_account)
-      .reduce((s, j) => s + Number(j.amount), 0)
-    const cogsFromExpenses = expenses
-      .filter((e) => COGS_ACCOUNTS.includes(e.account_code))
-      .reduce((s, e) => s + Number(e.amount), 0)
-    const cogs = cogsFromJournals + cogsFromExpenses
-    const labaBerjalan = totalIncome - totalExpense - cogs
-
-    const totalEquity = modalAwal - selisih + labaBerjalan
+    const totalEquity = totalEquity3 + labaBerjalan
     const totalLE = totalLiabilities + totalEquity
 
-    return {
-      cash, ar, invFG, invRM, uangMuka,
-      faGross, faDepr, faNet,
-      totalAssets,
-      hutangBella, hutangGaby, totalLiabilities,
-      modalAwal, selisih, labaBerjalan, totalEquity,
-      totalLE,
-    }
-  }, [raw])
+    // Memo: nilai inventory live (stok fisik x HPP) — pembanding vs saldo ledger
+    const invFG = (raw.inventory || []).reduce((s, i) => s + Number(i.stok) * Number(i.hpp), 0)
+    const invRM = (raw.rawMaterials || []).reduce((s, r) => s + Number(r.stok_qty || 0) * Number(r.hpp_per_unit || 0), 0)
+
+    return { assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity3, labaBerjalan, totalEquity, totalLE, invFG, invRM }
+  }, [D.balanceSheet, raw.inventory, raw.rawMaterials])
 
   const diff = Math.abs(bs.totalAssets - bs.totalLE)
   const balanced = diff < 100
@@ -118,7 +52,10 @@ export function BalanceSheet({ raw }) {
   return (
     <Card>
       <div className="flex justify-between mb-3.5">
-        <Label>Balance Sheet</Label>
+        <div className="flex items-center gap-2">
+          <Label>Balance Sheet (ledger)</Label>
+          <span className="text-[10px] text-slate-400">sumber: v_balance_sheet</span>
+        </div>
         {balanced
           ? <Badge text="Balance" color="#16a34a" />
           : <Badge text={`Selisih ${fR(diff)}`} color="#dc2626" />
@@ -129,29 +66,30 @@ export function BalanceSheet({ raw }) {
         {/* LEFT: ASSETS */}
         <div>
           <Section title="Assets" />
-          <Row l="Cash & Bank (BCA)" v={bs.cash} />
-          <Row l="Piutang (Pending Settlement)" v={bs.ar} />
-          <Row l="Inventory Barang Jadi" v={bs.invFG} />
-          <Row l="Inventory Bahan Baku" v={bs.invRM} />
-          <Row l="Uang Muka" v={bs.uangMuka} />
-          <Row l="Aset Tetap (bruto)" v={bs.faGross} sub />
-          <Row l="Akum. Penyusutan" v={bs.faDepr} sub />
-          <Row l="Aset Tetap (neto)" v={bs.faNet} />
+          {bs.assets.map((r) => (
+            <Row key={r.account_code} l={`${r.account_code}  ${r.account_name}`} v={Number(r.saldo)} />
+          ))}
           <Row l="TOTAL ASSETS" v={bs.totalAssets} b />
+          <div className="mt-3 text-[11px] text-slate-400 leading-relaxed px-3">
+            Memo — nilai inventory live (stok × HPP): Barang Jadi {fR(bs.invFG)} + Bahan Baku {fR(bs.invRM)}.
+            Saldo ledger inventory belum disesuaikan (menunggu stock opname; konvensi cash membebankan produksi langsung ke HPP).
+          </div>
         </div>
 
         {/* RIGHT: LIABILITIES + EQUITY */}
         <div>
           <Section title="Liabilities" />
-          <Row l="Hutang Bella" v={bs.hutangBella} />
-          <Row l="Hutang Gaby" v={bs.hutangGaby} />
+          {bs.liabilities.map((r) => (
+            <Row key={r.account_code} l={`${r.account_code}  ${r.account_name}`} v={Number(r.saldo)} />
+          ))}
           <Row l="TOTAL LIABILITIES" v={bs.totalLiabilities} b />
 
           <div className="mt-4">
             <Section title="Equity" />
-            <Row l="Modal Awal" v={bs.modalAwal} />
-            <Row l="Selisih Pembukuan 2025" v={-bs.selisih} />
-            <Row l="Laba Berjalan" v={bs.labaBerjalan} />
+            {bs.equity.map((r) => (
+              <Row key={r.account_code} l={`${r.account_code}  ${r.account_name}`} v={Number(r.saldo)} />
+            ))}
+            <Row l="Laba (Rugi) Berjalan" v={bs.labaBerjalan} />
             <Row l="TOTAL EQUITY" v={bs.totalEquity} b />
           </div>
 
